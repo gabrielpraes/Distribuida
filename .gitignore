@@ -1,0 +1,7 @@
+# Ignorar ambientes virtuais
+.venv/
+.venv_wsl/
+venv/
+env/
+__pycache__/
+*.pyc
