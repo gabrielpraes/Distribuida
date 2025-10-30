@@ -85,13 +85,23 @@ class MutualExclusionServiceImpl(distributed_printing_pb2_grpc.MutualExclusionSe
                     )
         
         if should_defer:
+
+            # CORREÇÃO DE SEÇÃO CRÍTICA 
+            ## cria um evento de sinal pra essa req especifica
+            reply_event = threading.Event()
+            
             # Adiciona à fila de respostas adiadas
             with self.client.deferred_lock:
-                self.client.deferred_replies.append((client_id, context))
-            # Não retorna ainda - a resposta será enviada depois
+                self.client.deferred_replies.append((client_id, reply_event))
+
+            ## deixar esperando atpe release critical section chamar release event
+            reply_event.wait()
+
+            ## "acorda" e responde
+            self.client.log(f"Concedendo acesso (atrasado) ao Cliente {client_id}")
             return distributed_printing_pb2.AccessResponse(
-                access_granted=False,
-                lamport_timestamp=new_time
+                access_granted=True,
+                lamport_timestamp=self.client.clock.tick() # Atualiza o relógio no momento do envio
             )
         else:
             # Responde imediatamente
@@ -121,11 +131,11 @@ class MutualExclusionServiceImpl(distributed_printing_pb2_grpc.MutualExclusionSe
         )
         
         # Decrementa contador de respostas pendentes
-        with self.client.reply_lock:
-            if self.client.pending_replies > 0:
-                self.client.pending_replies -= 1
-                if self.client.pending_replies == 0:
-                    self.client.reply_event.set()
+        # with self.client.reply_lock:
+        #     if self.client.pending_replies > 0:
+        #         self.client.pending_replies -= 1
+        #         if self.client.pending_replies == 0:
+        #             self.client.reply_event.set()
         
         return distributed_printing_pb2.Empty()
 
@@ -291,16 +301,20 @@ class PrintingClient:
         
         # Responde requisições adiadas
         with self.deferred_lock:
-            for peer_id, context in self.deferred_replies:
+
+            ## CORREÇÃO DE SEÇÃO CRÍTICA
+            # 'self.deferred_replies' agora contém (peer_id, reply_event)
+
+            for peer_id, reply_event in self.deferred_replies:
                 self.log(f"Respondendo requisição adiada do Cliente {peer_id}")
+
                 try:
-                    response = distributed_printing_pb2.AccessResponse(
-                        access_granted=True,
-                        lamport_timestamp=self.clock.tick()
-                    )
-                    context.abort(grpc.StatusCode.OK, "Access granted")
+                    # 1. Dispara o evento
+                    reply_event.set()
+                    # 2. Isso fará a thread 'RequestAccess' daquele cliente (que estava em 'reply_event.wait()')
+                    #    acordar e finalmente retornar a resposta AccessResponse(True)
                 except Exception as e:
-                    self.log(f"Erro ao responder Cliente {peer_id}: {e}")
+                    self.log(f"Erro ao disparar evento para Cliente {peer_id}: {e}")
             
             self.deferred_replies.clear()
         
