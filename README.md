@@ -1,16 +1,37 @@
-## Readme
+# Sistema de Impressão Distribuída com Exclusão Mútua
 
-# Como rodar
+Sistema distribuído implementando o algoritmo de **Ricart-Agrawala** para exclusão mútua, utilizando **Relógios Lógicos de Lamport** e **gRPC** para comunicação entre processos.
 
-### Passo 1 - dependências
+## 📋 Descrição
 
-*Versão do Python: 3.8 até 3.12.x*, superior não roda
+O sistema simula um ambiente de impressão distribuída onde múltiplos clientes disputam acesso exclusivo a um servidor de impressão. A coordenação é feita através do algoritmo de Ricart-Agrawala, garantindo exclusão mútua sem deadlock.
+
+### Componentes
+
+1. **Servidor de Impressão "Burro"** (`printer_server.py`)
+   - Porta: 50051
+   - Função: Apenas recebe e imprime documentos
+   - NÃO participa da exclusão mútua
+
+2. **Clientes Inteligentes** (`printing_client.py`)
+   - Portas: 50052, 50053, 50054, ...
+   - Implementam algoritmo de Ricart-Agrawala
+   - Mantêm relógios de Lamport sincronizados
+   - Geram requisições automáticas
+
+3. **Relógio de Lamport** (`lamport_clock.py`)
+   - Implementação thread-safe
+   - Sincronização de eventos distribuídos
+
+## 🚀 Instalação
+
+### 1. Instalar dependências
 
 ```bash
-pip install -r requirements_txt.txt
+pip install -r requirements.txt
 ```
 
-### Passo 2 - Compilar arquivo .proto
+### 2. Compilar arquivo .proto
 
 ```bash
 chmod +x compile_proto.sh
@@ -21,9 +42,6 @@ Ou manualmente:
 ```bash
 python -m grpc_tools.protoc -I. --python_out=. --grpc_python_out=. distributed_printing.proto
 ```
-
-
-
 
 ## 📂 Estrutura de Arquivos
 
