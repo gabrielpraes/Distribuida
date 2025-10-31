@@ -116,7 +116,7 @@ python printing_client.py --id 4 --port 50055 --clients "1:localhost:50052,2:loc
 4. Cliente A imprime no servidor
 5. Cliente A libera o recurso
 
-**Saída esperada no Cliente A:**
+**Saída cenário 1:**
 ```
 [Cliente 1, TS: 5, Estado: WANTED] Requisitando acesso...
 [Cliente 1, TS: 5, Estado: WANTED] Aguardando respostas de 2 clientes...
@@ -134,7 +134,7 @@ python printing_client.py --id 4 --port 50055 --clients "1:localhost:50052,2:loc
 4. Após C liberar, cliente com menor timestamp imprime
 5. Segundo cliente aguarda e imprime após liberação
 
-**Comportamento observado:**
+**Saída cenário 1:**
 - Cliente C: Estado HELD
 - Cliente A: Requisita (TS: 15)
 - Cliente B: Requisita (TS: 16)
