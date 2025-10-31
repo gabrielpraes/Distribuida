@@ -134,7 +134,7 @@ python printing_client.py --id 4 --port 50055 --clients "1:localhost:50052,2:loc
 4. Após C liberar, cliente com menor timestamp imprime
 5. Segundo cliente aguarda e imprime após liberação
 
-**Saída cenário 1:**
+**Saída cenário 2:**
 - Cliente C: Estado HELD
 - Cliente A: Requisita (TS: 15)
 - Cliente B: Requisita (TS: 16)
