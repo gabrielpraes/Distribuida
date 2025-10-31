@@ -1,17 +1,17 @@
 # Algoritmo de Ricart-Agrawala - Documentação Detalhada
 
-## 📖 Visão Geral
+## Visão Geral
 
 O algoritmo de Ricart-Agrawala é um protocolo distribuído para exclusão mútua que **não requer um coordenador central**. Todos os processos colaboram para decidir quem pode acessar o recurso compartilhado.
 
 ### Características Principais
 
-- ✅ **Totalmente distribuído**: Nenhum processo é especial
-- ✅ **Sem deadlock**: Impossível por design
-- ✅ **Ordenação por timestamps**: Decisões determinísticas
-- ✅ **Eficiente**: (N-1) mensagens por entrada na seção crítica
+- **Totalmente distribuído**: Nenhum processo é especial
+- **Sem deadlock**: Impossível por design
+- **Ordenação por timestamps**: Decisões determinísticas
+- **Eficiente**: (N-1) mensagens por entrada na seção crítica
 
-## 🎯 Conceitos Fundamentais
+## Conceitos Fundamentais
 
 ### 1. Estados do Processo
 
@@ -55,7 +55,7 @@ def tem_prioridade(meu_ts, meu_id, outro_ts, outro_id):
         return False
 ```
 
-## 🔄 Fluxo do Algoritmo
+## Fluxo do Algoritmo
 
 ### Fase 1: REQUISIÇÃO (Estado → WANTED)
 
@@ -121,7 +121,7 @@ def release_critical_section(self):
         send_release_notification(peer)
 ```
 
-## 📊 Exemplo Passo a Passo
+## Exemplo Passo a Passo
 
 ### Cenário: 3 Clientes (A, B, C) disputando o recurso
 
@@ -192,7 +192,7 @@ B: estado = HELD
 B: usa o recurso
 ```
 
-## 🎨 Diagrama de Sequência
+## Diagrama de Sequência
 
 ```
 Tempo →
@@ -219,9 +219,9 @@ Cliente A     Cliente B     Cliente C
    |         |                   |
 ```
 
-## 🔐 Propriedades de Corretude
+## Propriedades de Corretude
 
-### 1. Exclusão Mútua ✅
+### 1. Exclusão Mútua 
 **Teorema**: No máximo um processo está em HELD por vez.
 
 **Prova**: 
@@ -231,7 +231,7 @@ Cliente A     Cliente B     Cliente C
 - A só dá permissão após sair de HELD
 - Logo, B só entra depois de A sair
 
-### 2. Ausência de Deadlock ✅
+### 2. Ausência de Deadlock 
 **Teorema**: Sempre haverá progresso.
 
 **Prova**:
@@ -239,7 +239,7 @@ Cliente A     Cliente B     Cliente C
 - Processo com menor timestamp sempre recebe todas as permissões
 - Não há ciclo de espera possível
 
-### 3. Ausência de Starvation ✅
+### 3. Ausência de Starvation 
 **Teorema**: Todo processo que requisita eventualmente entra.
 
 **Prova**:
@@ -248,7 +248,7 @@ Cliente A     Cliente B     Cliente C
 - Eventualmente, terá o menor timestamp ativo
 - Receberá todas as permissões
 
-### 4. Ordenação Causal ✅
+### 4. Ordenação Causal 
 **Teorema**: Requisições são atendidas na ordem temporal.
 
 **Prova**:
@@ -256,7 +256,7 @@ Cliente A     Cliente B     Cliente C
 - Desempate por ID é determinístico
 - Todos os processos concordam sobre a ordem
 
-## 📈 Análise de Complexidade
+## Análise de Complexidade
 
 ### Mensagens por Entrada na Seção Crítica
 - **Requisição**: N-1 mensagens (broadcast)
@@ -273,7 +273,7 @@ Cliente A     Cliente B     Cliente C
 | Token Ring | 1 a N | Não | Falha total |
 | Lamport | 3(N-1) | Não | Tolerante |
 
-## 🐛 Casos Especiais
+## Casos Especiais
 
 ### Caso 1: Timestamps Idênticos
 ```python
@@ -311,7 +311,7 @@ except grpc.RpcError:
 # 3º: C (maior TS)
 ```
 
-## 🔬 Implementação Crítica
+## Implementação Crítica
 
 ### Thread Safety
 ```python
@@ -340,17 +340,6 @@ with self.reply_lock:
 self.reply_event.wait()
 ```
 
-## 📚 Referências
-
-**Paper Original**:
-- Ricart, G., & Agrawala, A. K. (1981). "An optimal algorithm for mutual exclusion in computer networks." *Communications of the ACM*, 24(1), 9-17.
-
-**Livros Recomendados**:
-- Coulouris et al. "Distributed Systems: Concepts and Design"
-- Tanenbaum & Van Steen "Distributed Systems: Principles and Paradigms"
-
-## 💡 Otimizações Possíveis
-
 ### 1. Ricart-Agrawala com Quorum
 - Não precisa de todas as N-1 respostas
 - Apenas maioria (N/2 + 1)
@@ -366,15 +355,3 @@ self.reply_event.wait()
 - Retransmissão em caso de falha
 - Aumenta robustez
 
-## ✅ Checklist de Implementação
-
-- [ ] Relógio de Lamport thread-safe
-- [ ] Estados bem definidos (RELEASED, WANTED, HELD)
-- [ ] Desempate correto (timestamp, depois ID)
-- [ ] Fila de respostas adiadas
-- [ ] Sincronização de threads (locks, events)
-- [ ] Tratamento de erros e timeouts
-- [ ] Logs detalhados para debug
-- [ ] Testes de concorrência
-- [ ] Verificação de ordenação
-- [ ] Shutdown gracioso
