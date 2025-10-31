@@ -2,7 +2,7 @@
 
 Sistema distribuído implementando o algoritmo de **Ricart-Agrawala** para exclusão mútua, utilizando **Relógios Lógicos de Lamport** e **gRPC** para comunicação entre processos.
 
-## 📋 Descrição
+## Descrição
 
 O sistema simula um ambiente de impressão distribuída onde múltiplos clientes disputam acesso exclusivo a um servidor de impressão. A coordenação é feita através do algoritmo de Ricart-Agrawala, garantindo exclusão mútua sem deadlock.
 
@@ -23,7 +23,7 @@ O sistema simula um ambiente de impressão distribuída onde múltiplos clientes
    - Implementação thread-safe
    - Sincronização de eventos distribuídos
 
-## 🚀 Instalação
+## Instalação
 
 ### 1. Instalar dependências
 
@@ -43,7 +43,7 @@ Ou manualmente:
 python -m grpc_tools.protoc -I. --python_out=. --grpc_python_out=. distributed_printing.proto
 ```
 
-## 📂 Estrutura de Arquivos
+## Estrutura de Arquivos
 
 ```
 .
@@ -56,7 +56,7 @@ python -m grpc_tools.protoc -I. --python_out=. --grpc_python_out=. distributed_p
 └── README.md                        # Este arquivo
 ```
 
-## 🎯 Como Executar
+## Como Executar Individualmente
 
 ### Passo 1: Iniciar o Servidor de Impressão
 
@@ -75,7 +75,7 @@ Status: Aguardando requisições...
 ============================================================
 ```
 
-### Passo 2: Iniciar os Clientes
+### Passo 2: Iniciar os Clientes 
 
 Abra **3 ou mais terminais** para os clientes.
 
@@ -106,7 +106,7 @@ python printing_client.py --id 4 --port 50055 --clients "1:localhost:50052,2:loc
 - `--clients`: Lista de outros clientes no formato `"id:host:port,id:host:port,..."`
 - `--printer`: (Opcional) Endereço do servidor de impressão (padrão: `localhost:50051`)
 
-## 🧪 Casos de Teste
+## Casos de Teste
 
 ### Cenário 1: Funcionamento Básico sem Concorrência
 
@@ -143,7 +143,19 @@ python printing_client.py --id 4 --port 50055 --clients "1:localhost:50052,2:loc
 - A imprime e libera
 - B recebe permissão e imprime
 
-## 🔍 Logs Detalhados
+
+## Como Executar Casos de Teste
+
+Em um terminal:
+
+```bash
+python test_cases.py
+```
+
+- Ambos os casos de teste são executados juntos
+
+
+## Logs Detalhados
 
 ### Servidor de Impressão
 ```
@@ -169,38 +181,38 @@ Requisição #3
 [Cliente 1, TS: 15, Estado: RELEASED] Respondendo requisição adiada do Cliente 2
 ```
 
-## 🛡️ Características Implementadas
+## Características Implementadas
 
-### ✅ Exclusão Mútua (Ricart-Agrawala)
+### Exclusão Mútua (Ricart-Agrawala)
 - Decisão distribuída sem coordenador central
 - Desempate por timestamp (menor tem prioridade)
 - Desempate secundário por ID (menor ID em caso de empate)
 - Fila de requisições adiadas
 
-### ✅ Relógio de Lamport
+### Relógio de Lamport
 - Thread-safe (locks para operações atômicas)
 - Atualização em eventos locais (`tick()`)
 - Sincronização em mensagens recebidas (`update()`)
 - Ordenação causal de eventos
 
-### ✅ Comunicação gRPC
+### Comunicação gRPC
 - Servidor de impressão (PrintingService)
 - Serviço de exclusão mútua (MutualExclusionService)
 - Chamadas assíncronas para melhor desempenho
 - Tratamento de erros e timeouts
 
-### ✅ Requisições Automáticas
+### Requisições Automáticas
 - Geração aleatória de documentos
 - Intervalos variáveis entre requisições (5-10s)
 - Mensagens realistas de documentos
 
-### ✅ Logs em Tempo Real
+### Logs em Tempo Real
 - Estado atual do cliente
 - Timestamp de Lamport
 - Eventos de requisição/concessão/liberação
 - Mensagens de debug detalhadas
 
-## 🎓 Algoritmo de Ricart-Agrawala
+## Algoritmo de Ricart-Agrawala
 
 ### Estados
 - **RELEASED**: Não está interessado no recurso
@@ -233,14 +245,14 @@ responder requisições adiadas
 broadcast ReleaseAccess(id, timestamp) para todos
 ```
 
-## 🔧 Tratamento de Erros
+## Tratamento de Erros
 
 - **Timeout em RPCs**: 5-10 segundos
 - **Cliente não responde**: Considera resposta recebida
 - **Erro de conexão**: Log de erro e continua
 - **Shutdown gracioso**: Handler de sinais SIGINT/SIGTERM
 
-## 📊 Verificação de Funcionamento
+## Verificação de Funcionamento
 
 ### Teste 1: Verificar ordem de impressão
 ```
@@ -261,7 +273,7 @@ Todos os timestamps devem ser crescentes
 Nenhum evento deve ter timestamp menor que eventos anteriores
 ```
 
-## 🐛 Troubleshooting
+## Troubleshooting
 
 ### Erro: "Address already in use"
 ```bash
@@ -281,16 +293,3 @@ lsof -ti:50052 | xargs kill -9
 - Verificar firewall local
 - Garantir que todos os clientes foram iniciados
 
-## 📚 Referências
-
-- **Ricart-Agrawala Algorithm**: "An Optimal Algorithm for Mutual Exclusion in Computer Networks" (1981)
-- **Lamport Clocks**: "Time, Clocks, and the Ordering of Events in a Distributed System" (1978)
-- **gRPC**: https://grpc.io/docs/languages/python/
-
-## 👥 Contribuições
-
-Sistema desenvolvido como trabalho acadêmico de Sistemas Distribuídos.
-
-## 📝 Licença
-
-Livre para uso educacional.
