@@ -94,6 +94,11 @@ python printing_client.py --id 2 --port 50053 --clients "1:localhost:50052,3:loc
 python printing_client.py --id 3 --port 50054 --clients "1:localhost:50052,2:localhost:50053"
 ```
 
+#### Terminal 4 - Cliente 4:
+```bash
+python printing_client.py --id 4 --port 50055 --clients "1:localhost:50052,2:localhost:50053,3:localhost:50054"
+```
+
 ### Parâmetros
 
 - `--id`: ID único do cliente (inteiro)

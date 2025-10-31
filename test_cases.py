@@ -5,6 +5,12 @@ import unittest
 import threading
 import time
 from lamport_clock import LamportClock
+import grpc
+from concurrent import futures
+
+import distributed_printing_pb2
+import distributed_printing_pb2_grpc
+from printing_client import PrintingClient, MutexState
 
 
 class TestLamportClock(unittest.TestCase):
@@ -268,6 +274,7 @@ def run_tests():
     suite.addTests(loader.loadTestsFromTestCase(TestMutexLogic))
     suite.addTests(loader.loadTestsFromTestCase(TestCausalOrdering))
     suite.addTests(loader.loadTestsFromTestCase(TestSystemIntegration))
+    suite.addTests(loader.loadTestsFromTestCase(TestDistributedPrintingIntegration))
     
     # Executa testes
     runner = unittest.TextTestRunner(verbosity=2)
@@ -285,6 +292,169 @@ def run_tests():
     print("="*60)
     
     return result.wasSuccessful()
+
+
+class TestDistributedPrintingIntegration(unittest.TestCase):
+    """Testes de integração para os cenários descritos pelo usuário
+    Cenário 1: Funcionamento Básico sem Concorrência
+    Cenário 2: Concorrência entre clientes A e B enquanto C está usando
+    """
+
+    def setUp(self):
+        # Criar um servicer de impressão de teste que registra a sequência de impressões
+        self.printed_sequence = []
+
+        class TestPrinterServicer(distributed_printing_pb2_grpc.PrintingServiceServicer):
+            def __init__(self, outer_list):
+                self.outer = outer_list
+                self.print_count = 0
+
+            def SendToPrinter(self, request, context):
+                # Registrar chamada (client_id, timestamp, message)
+                self.print_count += 1
+                self.outer.append((request.client_id, request.lamport_timestamp, request.message_content))
+                return distributed_printing_pb2.PrintResponse(
+                    success=True,
+                    confirmation_message=f"Printed #{self.print_count}",
+                    lamport_timestamp=request.lamport_timestamp
+                )
+
+        # Inicia servidor de impressão de teste em 50051
+        self.printer_servicer = TestPrinterServicer(self.printed_sequence)
+        self.printer_server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
+        distributed_printing_pb2_grpc.add_PrintingServiceServicer_to_server(
+            self.printer_servicer, self.printer_server
+        )
+        self.printer_server.add_insecure_port('[::]:50051')
+        self.printer_server.start()
+
+        # Lista para manter referências dos clientes criados e encerrá-los no tearDown
+        self.clients = []
+
+        # Pequena pausa para garantir que o servidor esteja pronto
+        time.sleep(0.2)
+
+    def tearDown(self):
+        # Parar servidor de impressão
+        try:
+            self.printer_server.stop(0)
+        except Exception:
+            pass
+
+        # Encerrar clientes criados
+        for c in self.clients:
+            try:
+                c.shutdown()
+            except Exception:
+                pass
+
+    def _create_clients(self, client_defs):
+        """Helper que cria, inicia servidores e conecta clientes.
+
+        client_defs: lista de tuples (client_id, port)
+        Retorna dict id->client
+        """
+        # Monta peer addresses para cada cliente
+        peers = {cid: f'localhost:{port}' for (cid, port) in client_defs}
+
+        clients = {}
+        for cid, port in client_defs:
+            # peers less self
+            peer_map = {k: v for k, v in peers.items() if k != cid}
+            client = PrintingClient(client_id=cid, port=port, peer_addresses=peer_map, printer_address='localhost:50051')
+            client.start_server()
+            # guardar para tearDown
+            self.clients.append(client)
+
+        # small delay to ensure client servers are up
+        time.sleep(0.2)
+
+        # Now connect to peers (after all servers started)
+        for client in self.clients:
+            client.connect_to_peers()
+
+        # Build map by id
+        for client in self.clients:
+            clients[client.client_id] = client
+
+        return clients
+
+    def test_scenario_1_basic_no_concurrency(self):
+        print("\n\n\nCenário 1: Um cliente A solicita e imprime sem concorrência.\n\n", end='')
+
+        # Criar dois clientes (A=1, B=2) - B não vai concorrer
+        client_defs = [(1, 6001), (2, 6002)]
+        clients = self._create_clients(client_defs)
+
+        client_a = clients[1]
+
+        # Executa fluxo de requisição/print/liberação
+        client_a.request_to_print("Mensagem do Cliente A - Sem concorrência")
+
+        # Pequena pausa para garantir que o envio chegou no servidor de impressão
+        time.sleep(0.1)
+
+        # Verifica que a impressora recebeu exatamente uma impressão
+        self.assertEqual(len(self.printed_sequence), 1)
+        self.assertEqual(self.printed_sequence[0][0], 1)  # primeiro campo é client_id
+
+        # Cliente A deve ter liberado o recurso
+        self.assertEqual(client_a.state, MutexState.RELEASED)
+
+    def test_scenario_2_concurrency(self):
+        print("\n\n\nCenário 2: Clientes A e B solicitam simultaneamente enquanto C está usando.\n\n", end='')
+
+        # Clientes: A=1, B=2, C=3
+        client_defs = [(1, 6011), (2, 6012), (3, 6013)]
+        clients = self._create_clients(client_defs)
+
+        client_a = clients[1]
+        client_b = clients[2]
+        client_c = clients[3]
+
+        # Definir threads para simular comportamento
+        def c_work():
+            # C entra primeiro e segura a seção crítica
+            client_c.request_critical_section()
+            # Mantém recurso ocupado para que A e B enviem requisições enquanto C está HELD
+            time.sleep(0.4)
+            # Faz a impressão enquanto está na seção crítica
+            client_c.print_document("Mensagem do Cliente C")
+            # Libera recurso
+            client_c.release_critical_section()
+
+        def a_work():
+            # A solicita um pouco antes de B para ter menor timestamp
+            time.sleep(0.05)
+            client_a.request_to_print("Mensagem do Cliente A")
+
+        def b_work():
+            # B solicita logo em seguida
+            time.sleep(0.09)
+            client_b.request_to_print("Mensagem do Cliente B")
+
+        # Inicia threads
+        t_c = threading.Thread(target=c_work)
+        t_a = threading.Thread(target=a_work)
+        t_b = threading.Thread(target=b_work)
+
+        t_c.start()
+        # Garante que C iniciou antes de A/B
+        time.sleep(0.02)
+        t_a.start()
+        t_b.start()
+
+        # Aguarda término
+        t_a.join()
+        t_b.join()
+        t_c.join()
+
+        # Deve ter 3 impressões: C primeiro, depois A (menor ts) depois B
+        self.assertEqual(len(self.printed_sequence), 3)
+        # Ordem esperada: C (id 3), A (id 1), B (id 2)
+        self.assertEqual(self.printed_sequence[0][0], 3)
+        self.assertEqual(self.printed_sequence[1][0], 1)
+        self.assertEqual(self.printed_sequence[2][0], 2)
 
 
 if __name__ == '__main__':
