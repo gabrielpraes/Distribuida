@@ -293,16 +293,3 @@ lsof -ti:50052 | xargs kill -9
 - Verificar firewall local
 - Garantir que todos os clientes foram iniciados
 
-## Referências
-
-- **Ricart-Agrawala Algorithm**: "An Optimal Algorithm for Mutual Exclusion in Computer Networks" (1981)
-- **Lamport Clocks**: "Time, Clocks, and the Ordering of Events in a Distributed System" (1978)
-- **gRPC**: https://grpc.io/docs/languages/python/
-
-## Contribuições
-
-Sistema desenvolvido como trabalho acadêmico de Sistemas Distribuídos.
-
-## Licença
-
-Livre para uso educacional.
